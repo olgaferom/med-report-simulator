@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Informes Médicos Completos</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { jsPDF } = window.jspdf;
+
+        const analisisCompleto = {
+            hematologia: [
+                { nombre: "Glóbulos rojos", unidad: "x10^6/µL", min: 4.5, max: 5.5 },
+                { nombre: "Hemoglobina", unidad: "g/dL", min: 13.5, max: 17.5 },
+                { nombre: "Hematocrito", unidad: "%", min: 41, max: 53 },
+                { nombre: "VCM", unidad: "fL", min: 80, max: 100 },
+                { nombre: "HCM", unidad: "pg", min: 27, max: 31 },
+                { nombre: "CHCM", unidad: "g/dL", min: 32, max: 36 },
+                { nombre: "Plaquetas", unidad: "x10^3/µL", min: 150, max: 450 },
+                { nombre: "Leucocitos", unidad: "x10^3/µL", min: 4.5, max: 11.0 },
+                { nombre: "Neutrófilos", unidad: "%", min: 40, max: 70 },
+                { nombre: "Linfocitos", unidad: "%", min: 20, max: 40 },
+                { nombre: "Monocitos", unidad: "%", min: 2, max: 8 },
+                { nombre: "Eosinófilos", unidad: "%", min: 1, max: 4 },
+                { nombre: "Basófilos", unidad: "%", min: 0.5, max: 1 }
+            ],
+            bioquimica: [
+                { nombre: "Glucosa", unidad: "mg/dL", min: 70, max: 100 },
+                { nombre: "Urea", unidad: "mg/dL", min: 10, max: 50 },
+                { nombre: "Creatinina", unidad: "mg/dL", min: 0.7, max: 1.3 },
+                { nombre: "Ácido úrico", unidad: "mg/dL", min: 3.4, max: 7.0 },
+                { nombre: "Colesterol total", unidad: "mg/dL", min: 150, max: 200 },
+                { nombre: "Triglicéridos", unidad: "mg/dL", min: 50, max: 150 },
+                { nombre: "HDL Colesterol", unidad: "mg/dL", min: 40, max: 60 },
+                { nombre: "LDL Colesterol", unidad: "mg/dL", min: 0, max: 100 },
+                { nombre: "AST/GOT", unidad: "U/L", min: 5, max: 40 },
+                { nombre: "ALT/GPT", unidad: "U/L", min: 7, max: 56 },
+                { nombre: "GGT", unidad: "U/L", min: 8, max: 61 },
+                { nombre: "Fosfatasa alcalina", unidad: "U/L", min: 44, max: 147 },
+                { nombre: "Proteínas totales", unidad: "g/dL", min: 6.6, max: 8.7 },
+                { nombre: "Albúmina", unidad: "g/dL", min: 3.5, max: 5.2 }
+            ]
+        };
+
+        const nombresAleatorios = [
+            "María García", "Juan Rodríguez", "Ana Martínez", "Carlos López", "Laura Fernández",
+            "Pedro Sánchez", "Sofía Gómez", "Diego Pérez", "Elena Díaz", "Javier Ruiz"
+        ];
+
+        const GeneradorInforme = () => {
+            const [informe, setInforme] = React.useState({
+                nombrePaciente: '',
+                edad: '',
+                fechaAnalisis: '',
+                resultados: {
+                    hematologia: [],
+                    bioquimica: []
+                },
+                observaciones: ''
+            });
+
+            const [informesGuardados, setInformesGuardados] = React.useState([]);
+
+            React.useEffect(() => {
+                const informesGuardados = localStorage.getItem('informesMedicos');
+                if (informesGuardados) {
+                    setInformesGuardados(JSON.parse(informesGuardados));
+                }
+                generarInformeCompleto();
+            }, []);
+
+            const generarValorAleatorio = (min, max) => {
+                // Probabilidad de que el valor esté fuera del rango normal (20%)
+                const fueraDeRango = Math.random() < 0.2;
+    
+                if (fueraDeRango) {
+                    // Decidir si el valor estará por encima o por debajo del rango normal
+                    const porEncima = Math.random() < 0.5;
+        
+                    if (porEncima) {
+                        // Generar un valor hasta un 30% por encima del máximo
+                        return (max + Math.random() * (max * 0.3)).toFixed(2);
+                    } else {
+                        // Generar un valor hasta un 30% por debajo del mínimo
+                        return (min - Math.random() * (min * 0.3)).toFixed(2);
+                    }
+                } else {
+                    // Generar un valor dentro del rango normal
+                    return (Math.random() * (max - min) + min).toFixed(2);
+                }
+            };
+
+            const generarInformeCompleto = () => {
+                const nombreAleatorio = nombresAleatorios[Math.floor(Math.random() * nombresAleatorios.length)];
+                const edadAleatoria = Math.floor(Math.random() * (80 - 18 + 1)) + 18;
+                const fechaActual = new Date().toISOString().split('T')[0];
+
+                const resultadosHematologia = analisisCompleto.hematologia.map(item => ({
+                    ...item,
+                    valor: generarValorAleatorio(item.min, item.max)
+                }));
+
+                const resultadosBioquimica = analisisCompleto.bioquimica.map(item => ({
+                    ...item,
+                    valor: generarValorAleatorio(item.min, item.max)
+                }));
+
+                // Verificar si hay valores fuera de rango
+                const valoresFueraDeRango = [...resultadosHematologia, ...resultadosBioquimica].filter(
+                    item => parseFloat(item.valor) < item.min || parseFloat(item.valor) > item.max
+                );
+
+                let observaciones = "Todos los resultados se encuentran dentro de los rangos normales.";
+                if (valoresFueraDeRango.length > 0) {
+                    observaciones = `Se han detectado ${valoresFueraDeRango.length} valor(es) fuera del rango normal. Se recomienda una revisión detallada y posiblemente repetir el análisis.`;
+                }
+
+                setInforme({
+                    nombrePaciente: nombreAleatorio,
+                    edad: edadAleatoria.toString(),
+                    fechaAnalisis: fechaActual,
+                    resultados: {
+                        hematologia: resultadosHematologia,
+                        bioquimica: resultadosBioquimica
+                    },
+                    observaciones: observaciones
+                });
+            };
+
+            const guardarInforme = () => {
+                const nuevosInformes = [...informesGuardados, informe];
+                setInformesGuardados(nuevosInformes);
+                localStorage.setItem('informesMedicos', JSON.stringify(nuevosInformes));
+                alert('Informe guardado con éxito');
+            };
+
+            const cargarInforme = (index) => {
+                setInforme(informesGuardados[index]);
+            };
+
+            const descargarPDF = () => {
+                const doc = new jsPDF();
+                
+                doc.setFontSize(16);
+                doc.text('INFORME DE LABORATORIO', 105, 20, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.text(`Paciente: ${informe.nombrePaciente}`, 20, 40);
+                doc.text(`Edad: ${informe.edad}`, 20, 50);
+                doc.text(`Fecha de análisis: ${informe.fechaAnalisis}`, 20, 60);
+                
+                doc.setFontSize(14);
+                doc.text('Hematología', 20, 80);
+                
+                doc.setFontSize(10);
+                doc.text('Parámetro', 20, 90);
+                doc.text('Resultado', 100, 90);
+                doc.text('Valores de referencia', 140, 90);
+                
+                let yPos = 100;
+                informe.resultados.hematologia.forEach((item, index) => {
+                    doc.text(item.nombre, 20, yPos);
+                    doc.text(`${item.valor} ${item.unidad}`, 100, yPos);
+                    doc.text(`${item.min} - ${item.max} ${item.unidad}`, 140, yPos);
+                    yPos += 10;
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                });
+                
+                doc.setFontSize(14);
+                doc.text('Bioquímica', 20, yPos + 10);
+                yPos += 20;
+                
+                doc.setFontSize(10);
+                doc.text('Parámetro', 20, yPos);
+                doc.text('Resultado', 100, yPos);
+                doc.text('Valores de referencia', 140, yPos);
+                yPos += 10;
+                
+                informe.resultados.bioquimica.forEach((item, index) => {
+                    doc.text(item.nombre, 20, yPos);
+                    doc.text(`${item.valor} ${item.unidad}`, 100, yPos);
+                    doc.text(`${item.min} - ${item.max} ${item.unidad}`, 140, yPos);
+                    yPos += 10;
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                });
+                
+                doc.setFontSize(12);
+                doc.text('Observaciones:', 20, yPos + 10);
+                const observacionesLines = doc.splitTextToSize(informe.observaciones, 170);
+                doc.text(observacionesLines, 20, yPos + 20);
+                
+                doc.setFontSize(10);
+                doc.text('Este informe es ficticio y ha sido generado con fines educativos.', 20, 280);
+                
+                doc.save('informe_medico_completo.pdf');
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-xl">
+                    <h2 className="text-2xl font-bold mb-4">Generador de Informes Médicos Completos</h2>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Nombre del Paciente</label>
+                                <p className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 p-2">{informe.nombrePaciente}</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Edad</label>
+                                <p className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 p-2">{informe.edad}</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Fecha de Análisis</label>
+                                <p className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 p-2">{informe.fechaAnalisis}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Resultados de Hematología</h3>
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parámetro</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resultado</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valores de referencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {informe.resultados.hematologia.map((item, index) => (
+                                        <tr key={index}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.nombre}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.valor} {item.unidad}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.min} - {item.max} {item.unidad}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2">Resultados de Bioquímica</h3>
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parámetro</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resultado</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valores de referencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {informe.resultados.bioquimica.map((item, index) => (
+                                        <tr key={index}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.nombre}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.valor} {item.unidad}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.min} - {item.max} {item.unidad}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Observaciones</label>
+                            <p className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 p-2">{informe.observaciones}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                            <button onClick={generarInformeCompleto} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                Generar Nuevo Informe
+                            </button>
+                            <button onClick={guardarInforme} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                                Guardar Informe
+                            </button>
+                            <button onClick={descargarPDF} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+                                Descargar PDF
+                            </button>
+                        </div>
+                        <div>
+                            <label htmlFor="informesGuardados" className="block text-sm font-medium text-gray-700">Informes Guardados</label>
+                            <select
+                                id="informesGuardados"
+                                onChange={(e) => cargarInforme(parseInt(e.target.value))}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            >
+                                <option value="">Seleccione un informe guardado</option>
+                                {informesGuardados.map((informe, index) => (
+                                    <option key={index} value={index}>
+                                        {informe.nombrePaciente} - {informe.fechaAnalisis}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<GeneradorInforme />, document.getElementById('root'));
+    </script>
+</body>
+</html>
